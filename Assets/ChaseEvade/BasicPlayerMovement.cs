@@ -5,49 +5,59 @@ using UnityEngine;
 public class BasicPlayerMovement : MonoBehaviour
 {
     public float speed = 3.0f;
+    public bool isBonusActive = false;
+    private Rigidbody2D rb;
+    private Vector3 velo;
+    private Vector3 moveDirection;
+    
 
-	// Use this for initialization
-	void Start ()
+    [Header("Dash Settings") ]
+    [SerializeField] private float dashingCooldown = 1f;
+    [SerializeField] private float dashingDuration = 1f;
+    [SerializeField] private float dashingSpeed = 10f;
+    private bool isDashing;
+    private bool canDash = true;
+
+    // Use this for initialization
+    void Start ()
     {
-      
-	}
-	
-	// Update is called once per frame
-	void Update ()
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    // Update is called once per frame
+    void Update()
     {
+        if (isDashing)
+        {
+            return;
+        }
+        // Could replace the above with the following code
+        float veloX = Input.GetAxisRaw("Horizontal");
+        float veloY = Input.GetAxisRaw("Vertical");
+        moveDirection = new Vector3(veloX, veloY, 0).normalized;
+
         // Move the player ship to where the mouse is clicked on-screen
         if (Input.GetButton("Fire1"))
         {
-            Vector3 newpos = Camera.main.ScreenToWorldPoint(Input.mousePosition);  
+            Vector3 newpos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             transform.position = new Vector3(newpos.x, newpos.y, 0.0f);
         }
+        if (Input.GetKeyDown(KeyCode.Space) && canDash)
+        {
+            StartCoroutine(Dash());
 
-        Vector3 input = new Vector3(0.0f,0.0f,0.0f);
+        }
+    }
 
-        // Move the player based on cursor key inputs
-        if (Input.GetKey(KeyCode.LeftArrow))
+    private void FixedUpdate()
+    {
+        if (isDashing)
         {
-            input += Vector3.left;
-        }
-        if (Input.GetKey(KeyCode.RightArrow))
-        {
-            input += Vector3.right;
-        }
-        if (Input.GetKey(KeyCode.UpArrow))
-        {
-            input += Vector3.up;
-        }
-        if (Input.GetKey(KeyCode.DownArrow))
-        {
-            input += Vector3.down;
+            return;
         }
 
-        Vector3 velocity = input.normalized * speed * Time.deltaTime;
 
-        // Could replace the above with the following code
-        //Vector3 velocity = Vector3(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"), 0);
-
-        transform.position += velocity;
+        rb.velocity = new Vector3(moveDirection.x * speed, moveDirection.y * speed, 0f);
     }
 
     void OnBecameInvisible()
@@ -73,4 +83,32 @@ public class BasicPlayerMovement : MonoBehaviour
             transform.position = newPosition;
         }
     }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("upgrade"))
+        {
+            collision.gameObject.SetActive(false);
+            StartCoroutine(playerBonus());
+        }
+    }
+
+    private IEnumerator playerBonus()
+    {
+        isBonusActive = true;
+        yield return new WaitForSeconds(5);
+        isBonusActive = false;
+    }
+
+    private IEnumerator Dash()
+    {
+        canDash = false;
+        isDashing = true;
+        rb.velocity = new Vector3(moveDirection.x * dashingSpeed, moveDirection.y * dashingSpeed, 0f);
+        yield return new WaitForSeconds(dashingDuration);
+        isDashing = false;
+        yield return new WaitForSeconds(dashingCooldown);
+        canDash = true;
+    }
+
 }
